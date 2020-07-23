@@ -52,17 +52,11 @@ type Context struct {
 	Greeting string
 	Version  string
 	User     User
-	Methods  []Method
 }
 
 type User struct {
 	IsLoggedIn bool
 	Username   string
-}
-
-type Method struct {
-	Name     string
-	Location string
 }
 
 func getData(r *http.Request) *Context {
@@ -71,16 +65,6 @@ func getData(r *http.Request) *Context {
 		User: User{
 			IsLoggedIn: sessions.IsLoggedIn(r),
 			Username:   sessions.GetUsername(r),
-		},
-		Methods: []Method{
-			{
-				Name:     "Internal",
-				Location: "login",
-			},
-			{
-				Name:     "Github",
-				Location: "/auth/github",
-			},
 		},
 	}
 	return &c

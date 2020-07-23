@@ -8,14 +8,5 @@
     <h1>Welcome</h1>
     <p>Greeting: {{.Greeting}}</p>
     <p>Version: {{.Version}}</p>
-    <ul>
-    {{ if .Methods}}
-        {{range .Methods}}
-            <li><a href={{.Location}}>{{.Name}}</a></li>
-        {{end}}
-    {{else}}
-        <p>No methods to sign-in</p>
-    {{end}}
-    </ul>
   </body>
 </html>
