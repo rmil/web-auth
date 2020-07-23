@@ -1,9 +1,11 @@
 package views
 
 import (
+	"encoding/base64"
 	"log"
 	"net/http"
 
+	whirl "github.com/balacode/zr-whirl"
 	"github.com/ystv/web-auth/db"
 	"github.com/ystv/web-auth/sessions"
 )
@@ -45,6 +47,8 @@ func LoginFunc(w http.ResponseWriter, r *http.Request) {
 		username := r.Form.Get("username")
 		password := r.Form.Get("password")
 
+		password = hashPassword(password)
+
 		if (username != "" && password != "") && db.ValidUser(username, password) {
 			session.Values["loggedin"] = "true"
 			session.Values["username"] = username
@@ -66,6 +70,8 @@ func SignUpFunc(w http.ResponseWriter, r *http.Request) {
 		password := r.Form.Get("password")
 		email := r.Form.Get("email")
 
+		password = hashPassword(password)
+
 		err := db.CreateUser(username, password, email)
 		if err != nil {
 			http.Error(w, "Unable to sign user up", http.StatusInternalServerError)
@@ -75,4 +81,15 @@ func SignUpFunc(w http.ResponseWriter, r *http.Request) {
 	} else if r.Method == "GET" {
 		signupTemplate.Execute(w, nil)
 	}
+}
+
+func hashPassword(password string) string {
+	bytePass := []byte(password)
+	iter := 1000
+	var next []byte
+	for i := 0; i < iter; i++ {
+		next = append(next, bytePass...)
+		next = whirl.HashOfBytes(bytePass, []byte(next))
+	}
+	return base64.StdEncoding.EncodeToString(next)
 }
