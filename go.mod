@@ -1,4 +1,4 @@
-module github.com/ystv/web-auth
+module github.com/rmil/web-auth
 
 go 1.14
 

@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ystv/web-auth/sessions"
+	"github.com/rmil/web-auth/sessions"
 )
 
 var (

@@ -6,8 +6,8 @@ import (
 	"net/http"
 
 	whirl "github.com/balacode/zr-whirl"
-	"github.com/ystv/web-auth/db"
-	"github.com/ystv/web-auth/sessions"
+	"github.com/rmil/web-auth/db"
+	"github.com/rmil/web-auth/sessions"
 )
 
 // LogoutFunc Implements the logout functionality.

@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/ystv/web-auth/db"
-	"github.com/ystv/web-auth/sessions"
+	"github.com/rmil/web-auth/db"
+	"github.com/rmil/web-auth/sessions"
 )
 
 type JWTClaims struct {
@@ -115,15 +115,15 @@ func TestAPI(w http.ResponseWriter, r *http.Request) {
 		var err error
 		var message string
 		var status Status
-		if r.Header["Token"] == nil {
+		token, err := r.Cookie("token")
+		if err != nil {
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}
-		token := r.Header["Token"][0]
 
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
-		IsTokenValid, username := ValidateToken(token)
+		IsTokenValid, username := ValidateToken(token.Value)
 		// When the token is not valid show
 		// the default error JOSN document
 		if !IsTokenValid {

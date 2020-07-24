@@ -3,7 +3,7 @@ package views
 import (
 	"net/http"
 
-	"github.com/ystv/web-auth/sessions"
+	"github.com/rmil/web-auth/sessions"
 )
 
 func InternalFunc(w http.ResponseWriter, r *http.Request) {

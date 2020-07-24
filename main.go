@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/ystv/web-auth/views"
+	"github.com/rmil/web-auth/views"
 )
 
 func main() {
