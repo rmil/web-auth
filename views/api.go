@@ -11,6 +11,7 @@ import (
 	"github.com/rmil/web-auth/sessions"
 )
 
+// JWTClaims represents basic identifiable/useful claims
 type JWTClaims struct {
 	UserID   int    `json:"userID"`
 	Username string `json:"username"`
@@ -76,6 +77,7 @@ func ValidateToken(myToken string) (bool, string) {
 	return token.Valid, claims.Username
 }
 
+// SetTokenHandler sets a valid JWT in a cookie instead of returning a string
 func SetTokenHandler(w http.ResponseWriter, r *http.Request) {
 	expirationTime := time.Now().Add(5 * time.Minute)
 	if !sessions.IsLoggedIn(r) {
@@ -91,7 +93,7 @@ func SetTokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Declare the token with the algorithm used for signing,
-	// and the claims
+	// and the claims.
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	// Create the JWT string
 	tokenString, err := token.SignedString(signingKey)
@@ -110,6 +112,63 @@ func SetTokenHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// RefreshHandler refreshes the JWT token using a stil in date
+// JWT instead of using the session.
+func RefreshHandler(w http.ResponseWriter, r *http.Request) {
+	c, err := r.Cookie("token")
+	if err != nil {
+		if err == http.ErrNoCookie {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	tokenString := c.Value
+	claims := &JWTClaims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return jwtKey, nil
+	})
+
+	if err != nil {
+		if err == jwt.ErrSignatureInvalid {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if !token.Valid {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	// Will check if token is within 30 seconds of expiry, otherwise bad request
+	if time.Unix(claims.ExpiresAt, 0).Sub(time.Now()) > 30*time.Second {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// A new token is then generated.
+	expirationTime := time.Now().Add(5 * time.Minute)
+	claims.ExpiresAt = expirationTime.Unix()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(jwtKey)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// Set the new token as the users "token" cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:    "token",
+		Value:   tokenString,
+		Expires: expirationTime,
+		Path:    "/",
+	})
+}
+
+// TestAPI returns a JSON object with a valid JWT
 func TestAPI(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		var err error
@@ -157,7 +216,8 @@ func TestAPI(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type Status struct {
+// status used for test API as the return JSON
+type status struct {
 	StatusCode int    `json:"status_code"`
 	Message    string `json:"message"`
 }

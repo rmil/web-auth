@@ -17,6 +17,8 @@ var (
 	internalTemplate *template.Template
 )
 
+// PopulateTemplates populates the HTML templates to be used
+// for the webserver.
 func PopulateTemplates() {
 	var allFiles []string
 	templatesDir := "./public/templates/"
@@ -41,6 +43,7 @@ func PopulateTemplates() {
 	internalTemplate = templates.Lookup("internal.tmpl")
 }
 
+// WelcomeFunc handles the welcome/index page.
 func WelcomeFunc(w http.ResponseWriter, r *http.Request) {
 	context := getData(r)
 	if r.Method == "GET" {
@@ -48,12 +51,14 @@ func WelcomeFunc(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Context is a struct that is applied to the templates.
 type Context struct {
 	Greeting string
 	Version  string
 	User     User
 }
 
+// User substruct of Context providing user information
 type User struct {
 	IsLoggedIn bool
 	Username   string

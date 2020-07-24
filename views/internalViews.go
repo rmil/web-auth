@@ -6,6 +6,7 @@ import (
 	"github.com/rmil/web-auth/sessions"
 )
 
+// InternalFunc handles a request to the internal template
 func InternalFunc(w http.ResponseWriter, r *http.Request) {
 	c := getData(r)
 	internalTemplate.Execute(w, c)
