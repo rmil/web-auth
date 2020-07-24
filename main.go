@@ -20,7 +20,7 @@ func main() {
 	http.HandleFunc("/api/get_token", views.GetTokenHandler)
 	// Sets a cookie with the JWT inside of it
 	http.HandleFunc("/api/set_token", views.SetTokenHandler)
-	// http.handleFunc("/api/refresh_token", views.Refresh)
+	http.HandleFunc("/api/refresh_token", views.RefreshHandler)
 	http.HandleFunc("/api/test", views.TestAPI)
 
 	// Login required

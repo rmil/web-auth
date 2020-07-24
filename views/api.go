@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -18,7 +19,11 @@ type JWTClaims struct {
 	jwt.StandardClaims
 }
 
-var signingKey = []byte("verygood-secret")
+var signingKey []byte
+
+func init() {
+	signingKey = []byte(os.Getenv("signing_key"))
+}
 
 // GetTokenHandler will get a token for the username and password
 func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
@@ -52,7 +57,7 @@ func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 		// Sign the token with our secret
 		tokenString, err := token.SignedString(signingKey)
 		if err != nil {
-			log.Println("Something went wrong with singing token")
+			log.Println("Something went wrong with signing token")
 			w.Write([]byte("Authentication failed"))
 			return
 		}
@@ -64,17 +69,21 @@ func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // ValidateToken will validate the token
-func ValidateToken(myToken string) (bool, string) {
+func ValidateToken(myToken string) (bool, *JWTClaims) {
 	token, err := jwt.ParseWithClaims(myToken, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(signingKey), nil
+		return signingKey, nil
 	})
 
 	if err != nil {
-		return false, ""
+		return false, nil
+	}
+
+	if !token.Valid {
+		return false, nil
 	}
 
 	claims := token.Claims.(*JWTClaims)
-	return token.Valid, claims.Username
+	return token.Valid, claims
 }
 
 // SetTokenHandler sets a valid JWT in a cookie instead of returning a string
@@ -126,19 +135,9 @@ func RefreshHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	tokenString := c.Value
 	claims := &JWTClaims{}
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return jwtKey, nil
-	})
 
-	if err != nil {
-		if err == jwt.ErrSignatureInvalid {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	if !token.Valid {
+	ok, claims := ValidateToken(tokenString)
+	if !ok {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -153,7 +152,7 @@ func RefreshHandler(w http.ResponseWriter, r *http.Request) {
 	expirationTime := time.Now().Add(5 * time.Minute)
 	claims.ExpiresAt = expirationTime.Unix()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(jwtKey)
+	tokenString, err = token.SignedString(signingKey)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -173,7 +172,7 @@ func TestAPI(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		var err error
 		var message string
-		var status Status
+		var status statusStruct
 		token, err := r.Cookie("token")
 		if err != nil {
 			w.WriteHeader(http.StatusForbidden)
@@ -182,11 +181,11 @@ func TestAPI(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
-		IsTokenValid, username := ValidateToken(token.Value)
+		IsTokenValid, claims := ValidateToken(token.Value)
 		// When the token is not valid show
 		// the default error JOSN document
 		if !IsTokenValid {
-			status = Status{
+			status = statusStruct{
 				StatusCode: http.StatusInternalServerError,
 				Message:    message,
 			}
@@ -200,11 +199,11 @@ func TestAPI(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		log.Printf("token is valid \"%s\" is logged in", username)
+		log.Printf("token is valid \"%s\" is logged in", claims.Username)
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusOK)
 
-		status = Status{
+		status = statusStruct{
 			StatusCode: http.StatusOK,
 			Message:    "Good",
 		}
@@ -216,8 +215,8 @@ func TestAPI(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// status used for test API as the return JSON
-type status struct {
+// statusStruct used for test API as the return JSON
+type statusStruct struct {
 	StatusCode int    `json:"status_code"`
 	Message    string `json:"message"`
 }

@@ -65,7 +65,7 @@ type User struct {
 }
 
 func getData(r *http.Request) *Context {
-	c := Context{Version: "0.0.1",
+	c := Context{Version: "0.3.0",
 		Greeting: "Auth service",
 		User: User{
 			IsLoggedIn: sessions.IsLoggedIn(r),
