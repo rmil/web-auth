@@ -51,6 +51,7 @@ func LoginFunc(w http.ResponseWriter, r *http.Request) {
 
 		if (username != "" && password != "") && db.ValidUser(username, password) {
 			session.Values["loggedin"] = "true"
+			session.Values["userID"], _ = db.GetUserID(username)
 			session.Values["username"] = username
 			session.Save(r, w)
 			log.Printf("user \"%s\" is authenticated", username)

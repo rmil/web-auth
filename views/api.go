@@ -8,14 +8,16 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/ystv/web-auth/db"
+	"github.com/ystv/web-auth/sessions"
 )
 
-type MyCustomClaims struct {
+type JWTClaims struct {
+	UserID   int    `json:"userID"`
 	Username string `json:"username"`
 	jwt.StandardClaims
 }
 
-var mySigningKey = []byte("secret")
+var signingKey = []byte("verygood-secret")
 
 // GetTokenHandler will get a token for the username and password
 func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
@@ -27,13 +29,17 @@ func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	username := r.Form.Get("username")
 	password := r.Form.Get("password")
+
+	password = hashPassword(password)
+
 	if username == "" || password == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Invalid Username or password"))
 		return
 	}
 	if db.ValidUser(username, password) {
-		claims := MyCustomClaims{
+		claims := JWTClaims{
+			0,
 			username,
 			jwt.StandardClaims{
 				ExpiresAt: time.Now().Add(time.Hour * 5).Unix(),
@@ -43,7 +49,7 @@ func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 		// Sign the token with our secret
-		tokenString, err := token.SignedString(mySigningKey)
+		tokenString, err := token.SignedString(signingKey)
 		if err != nil {
 			log.Println("Something went wrong with singing token")
 			w.Write([]byte("Authentication failed"))
@@ -58,16 +64,50 @@ func GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 
 // ValidateToken will validate the token
 func ValidateToken(myToken string) (bool, string) {
-	token, err := jwt.ParseWithClaims(myToken, &MyCustomClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(mySigningKey), nil
+	token, err := jwt.ParseWithClaims(myToken, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(signingKey), nil
 	})
 
 	if err != nil {
 		return false, ""
 	}
 
-	claims := token.Claims.(*MyCustomClaims)
+	claims := token.Claims.(*JWTClaims)
 	return token.Valid, claims.Username
+}
+
+func SetTokenHandler(w http.ResponseWriter, r *http.Request) {
+	expirationTime := time.Now().Add(5 * time.Minute)
+	if !sessions.IsLoggedIn(r) {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+	claims := &JWTClaims{
+		UserID:   sessions.GetUserID(r),
+		Username: sessions.GetUsername(r),
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: expirationTime.Unix(),
+		},
+	}
+
+	// Declare the token with the algorithm used for signing,
+	// and the claims
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	// Create the JWT string
+	tokenString, err := token.SignedString(signingKey)
+	if err != nil {
+		// If there is an error in creating the JWT
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	// Finally, we set the client cooke for the "token" as the JWT
+	// we generated, also setting the expiry time as the same
+	http.SetCookie(w, &http.Cookie{
+		Name:    "token",
+		Value:   tokenString,
+		Expires: expirationTime,
+		Path:    "/",
+	})
 }
 
 func TestAPI(w http.ResponseWriter, r *http.Request) {

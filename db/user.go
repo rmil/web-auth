@@ -35,7 +35,7 @@ func ValidUser(username, password string) bool {
 //GetUserID will get the user's ID from the database
 func GetUserID(username string) (int, error) {
 	var userID int
-	userSQL := "select id from user where username=?"
+	userSQL := "select user_id from user where username=?"
 	rows := database.query(userSQL, username)
 
 	defer rows.Close()
